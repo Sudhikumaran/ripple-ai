@@ -22,6 +22,14 @@ dist/
 .next/
 .next-cache/
 
+# Packages
+node_modules/
+
+# Env files
+.env
+.env.*
+!.env.example
+
 # Editor
 .vscode/
 .idea/
