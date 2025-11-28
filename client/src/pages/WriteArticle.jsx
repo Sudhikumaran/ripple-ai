@@ -1,4 +1,4 @@
-import { Edit, Sparkles } from 'lucide-react'
+import { Edit, Edit2Icon, Edit3, Edit3Icon, Sparkles } from 'lucide-react'
 import React, { useState } from 'react'
 
 const WriteArticle = () => {
@@ -43,7 +43,7 @@ const WriteArticle = () => {
               onClick={() => setSelectedLength(item)}
               className={`text-xs px-4 py-1 border rounded-full cursor-pointer ${
                 selectedLength.text === item.text
-                  ? 'bg-blue-50 text-blue-700 border-blue-400'
+                  ? 'bg-blue-50 text-blue-700'
                   : 'text-gray-500 border-gray-300'
               }`}
             >
@@ -51,6 +51,8 @@ const WriteArticle = () => {
             </span>
           ))}
         </div>
+
+        
 
         <br />
         <button className='w-full flex justify-center items-center gap-2 bg-gradient-to-r from-[#226BFF] to-[#65ADFF] text-white px-4 py-2 mt-6 text-sm rounded-lg cursor-pointer'>
@@ -60,7 +62,23 @@ const WriteArticle = () => {
       </form>
 
       {/* Right col */}
-      <div></div>
+      <div className='w-full max-w-lg p-4 bg-white rounded-lg flex flex-col border border-gray-200 min-h-96 max-h-[600px]'>
+        <div className='flex items-center gap-3'>
+
+          <Edit className='w-5 h-5 text-[#4A7AFF]' />
+          <h1 className='text-xl font-semibold'>Article Configuration</h1>
+
+        </div>
+
+        <div className='flex-1 flex justify-center items-center'>
+          <div className='text-sm flex flex-col items-center gap-5 text-gray-400'>
+            <Edit className='w- 9 h-9 text-[#4A7AFF]' />
+            <p>Enter a topic and click "Generate title " to get started</p>
+          </div>
+
+        </div>
+         
+      </div>
     </div>
   )
 }
