@@ -1,5 +1,5 @@
 import express from "express";
-import { generateArticle, generateImage } from "../controllers/aiController.js";
+import { generateArticle, generateImage, generateBlogTitle } from "../controllers/aiController.js";
 import { auth } from "../middlewares/auth.js";
 
 const aiRouter = express.Router();
