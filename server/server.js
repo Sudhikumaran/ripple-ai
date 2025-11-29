@@ -28,7 +28,8 @@ app.use(clerkMiddleware())
 
 app.get('/', (req,res)=>res.send('Server is Live'))
 
-app.use(requireAuth())
+// Note: requireAuth() moved to individual routes via custom 'auth' middleware
+// app.use(requireAuth())  // This was causing 403 on all requests before custom auth could check plan/usage
 
 app.use('/api/ai', aiRouter)
 

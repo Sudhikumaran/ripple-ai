@@ -4,7 +4,15 @@ import { clerkClient } from "@clerk/express";
 
 export const auth = async (req, res, next) => {
   try {
-    const { userId } = req.auth();
+    console.log('[auth middleware] headers:', { auth: req.headers.authorization?.substring(0, 20), cookie: req.headers.cookie ? 'SET' : 'MISSING' });
+    const auth = req.auth();
+    console.log('[auth middleware] req.auth():', auth);
+    if (!auth || !auth.userId) {
+      console.error('[auth] req.auth() is empty or missing userId:', auth);
+      return res.status(401).json({ success: false, message: 'Unauthorized: Missing or invalid authentication', debug: { auth, headers: req.headers } });
+    }
+
+    const { userId } = auth;
     const user = await clerkClient.users.getUser(userId);
     const pm = user?.privateMetadata || {};
     const pub = user?.publicMetadata || {};
@@ -56,6 +64,7 @@ export const auth = async (req, res, next) => {
     console.log('[auth]', { plan: req.plan, pm, pub });
     next();
   } catch (error) {
-    res.json({ success: false, message: error.message });
+    console.error('[auth] error:', error.message);
+    res.status(401).json({ success: false, message: 'Unauthorized: ' + error.message });
   }
 };

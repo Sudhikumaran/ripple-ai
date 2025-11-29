@@ -19,8 +19,10 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "google-auth-library": "^9.4.0",
     "multer": "^2.0.2",
     "openai": "^6.9.1",
+    "pdf-parse": "^2.4.5",
     "pdf-parser": "^1.0.5"
   },
   "devDependencies": {

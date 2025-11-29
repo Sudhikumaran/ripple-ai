@@ -6,12 +6,10 @@ import {v2 as cloudinary} from 'cloudinary'
 import axios from 'axios'
 import FormData from 'form-data'
 import fs from 'fs'
-import pdf from 'pdf-parse/lib/pdf-parse.js'
-
-const AI = new OpenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-  baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
-});
+import { createRequire } from 'module';
+import { getAccessToken } from '../utils/googleAuth.js';
+const require = createRequire(import.meta.url);
+const pdf = require('pdf-parse');
 
 export const generateArticle = async (req, res) => {
   try {
@@ -20,6 +18,8 @@ export const generateArticle = async (req, res) => {
     const plan = req.plan;
     const free_usage = req.free_usage;
 
+    console.log('[generateArticle] userId:', userId, 'plan:', plan, 'prompt:', prompt?.substring(0, 50));
+
     if (plan !== "premium" && free_usage >= 10) {
       return res.json({
         success: false,
@@ -27,20 +27,73 @@ export const generateArticle = async (req, res) => {
       });
     }
 
-    const response = await AI.chat.completions.create({
-      model: "gemini-2.0-flash",
-      messages: [
-        {
-          role: "user",
-          content: prompt,
+    let content;
+    let authMethod = 'unknown';
+
+    // Helper to make Google Generative API request
+    const callGoogleAPI = async (token) => {
+      const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+      const body = {
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: prompt }],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: Math.min(length || 512, 2048),
         },
-      ],
-      temperature: 0.7,
-      max_tokens: length,
-    });
+      };
 
-    const content = response.choices[0].message.content;
+      const headers = {
+        'Content-Type': 'application/json',
+      };
 
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      const finalUrl = token ? url : `${url}?key=${process.env.GEMINI_API_KEY}`;
+      const response = await axios.post(finalUrl, body, { headers });
+      return response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    };
+
+    // Try 1: Service-account auth (production-recommended)
+    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      try {
+        authMethod = 'service-account';
+        console.log('[generateArticle] attempting service-account auth');
+        const token = await getAccessToken();
+        content = await callGoogleAPI(token);
+        console.log('[generateArticle] ✓ service-account success');
+      } catch (err) {
+        console.warn('[generateArticle] service-account failed:', err.response?.status, err.message);
+        authMethod = 'failed-sa';
+      }
+    }
+
+    // Try 2: API key via query parameter (development)
+    if (!content && process.env.GEMINI_API_KEY) {
+      try {
+        authMethod = 'api-key';
+        console.log('[generateArticle] attempting API key auth');
+        content = await callGoogleAPI(null);
+        console.log('[generateArticle] ✓ API key success');
+      } catch (err) {
+        console.warn('[generateArticle] API key failed:', err.response?.status, err.message);
+        if (err.response?.data) {
+          console.warn('[generateArticle] API error response:', JSON.stringify(err.response.data));
+        }
+        authMethod = 'failed-key';
+      }
+    }
+
+    if (!content) {
+      throw new Error(`Failed to generate content (auth method: ${authMethod}). Ensure GEMINI_API_KEY or GOOGLE_APPLICATION_CREDENTIALS are set.`);
+    }
+
+    console.log('[generateArticle] using auth method:', authMethod);
     await sql`INSERT INTO creations (user_id, prompt, content, type) VALUES (${userId}, ${prompt}, ${content}, 'article')`;
 
     if (plan !== "premium") {
@@ -50,11 +103,10 @@ export const generateArticle = async (req, res) => {
         },
       });
     }
-
     res.json({ success: true, content });
   } catch (error) {
-    console.log(error.message);
-    res.json({ success: false, message: error.message });
+      console.error('[generateArticle] error:', error.message, error.stack);
+      res.status(500).json({ success: false, message: error.message });
   }
 };
 
