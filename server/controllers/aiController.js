@@ -124,19 +124,35 @@ export const generateBlogTitle = async (req, res) => {
       });
     }
 
-    const response = await AI.chat.completions.create({
-      model: "gemini-2.0-flash",
-      messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 100,
-    });
+    let content;
 
-    const content = response.choices[0].message.content;
+    // Try API key auth
+    if (process.env.GEMINI_API_KEY) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+        const body = {
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: prompt }],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 100,
+          },
+        };
+        const response = await axios.post(url, body);
+        content = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      } catch (err) {
+        console.error('[generateBlogTitle] API key failed:', err.message);
+        throw err;
+      }
+    }
+
+    if (!content) {
+      throw new Error('Failed to generate blog title. Ensure GEMINI_API_KEY is set.');
+    }
 
     await sql`INSERT INTO creations (user_id, prompt, content, type) VALUES (${userId}, ${prompt}, ${content}, 'blog-title')`;
 
@@ -296,22 +312,35 @@ export const resumeReview = async (req, res) => {
     const pdfData = await pdf(dataBuffer);
     const prompt = `Review the following resume and provide feedback to improve it:\n\n${pdfData.text}`;
 
-        const response = await AI.chat.completions.create({
-      model: "gemini-2.0-flash",
-      messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-      temperature: 0.7,
-      max_tokens: 1000,
-    });
+    let content;
 
-    const content = response.choices[0].message.content;
+    // Try API key auth
+    if (process.env.GEMINI_API_KEY) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+        const body = {
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: prompt }],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 1000,
+          },
+        };
+        const response = await axios.post(url, body);
+        content = response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      } catch (err) {
+        console.error('[resumeReview] API key failed:', err.message);
+        throw err;
+      }
+    }
 
-
-  
+    if (!content) {
+      throw new Error('Failed to review resume. Ensure GEMINI_API_KEY is set.');
+    }
 
     await sql`INSERT INTO creations (user_id, prompt, content, type) VALUES (${userId},'Review the uploaded resume', ${content}, 'resume-review')`;
 
